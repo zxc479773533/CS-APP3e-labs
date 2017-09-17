@@ -173,7 +173,20 @@ int logicalShift(int x, int n) {
  *   Rating: 4
  */
 int bitCount(int x) {
-  return 2;
+  int mask1 = 0x55 + (0x55 << 8);
+  int mask2 = 0x33 + (0x33 << 8);
+  int mask3 = 0x0f + (0x0f << 8);
+  int mask4 = 0xff + (0xff << 16);
+  int mask5 = 0xff + (0xff << 8);
+  mask1 += mask1 << 16;
+  mask2 += mask2 << 16;
+  mask3 += mask3 << 16;  
+  x = (x & mask1) + ((x >> 1) & mask1);
+  x = (x & mask2) + ((x >> 2) & mask2);
+  x = (x & mask3) + ((x >> 4) & mask3);
+  x = (x & mask4) + ((x >> 8) & mask4);
+  x = (x & mask5) + ((x >> 16) & mask5);
+  return x;
 }
 /* 
  * bang - Compute !x without using !
@@ -183,7 +196,8 @@ int bitCount(int x) {
  *   Rating: 4
  */
 int bang(int x) {
-  return 2;
+  int y = x | (~x + 1);
+  return ((y >> 31) & 0x01) ^ 0x01;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -192,7 +206,7 @@ int bang(int x) {
  *   Rating: 1
  */
 int tmin(void) {
-  return 2;
+  return 1 << 31;
 }
 /* 
  * fitsBits - return 1 if x can be represented as an 
@@ -215,7 +229,8 @@ int fitsBits(int x, int n) {
  *   Rating: 2
  */
 int divpwr2(int x, int n) {
-    return 2;
+  int bias = (x >> 31) & ((1 << n) + (~0));
+  return (x + bias) >> n;
 }
 /* 
  * negate - return -x 
@@ -225,7 +240,7 @@ int divpwr2(int x, int n) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return ~x + 1;
 }
 /* 
  * isPositive - return 1 if x > 0, return 0 otherwise 
@@ -235,7 +250,8 @@ int negate(int x) {
  *   Rating: 3
  */
 int isPositive(int x) {
-  return 2;
+  int bias = !((x >> 31) & 0x01);
+  return !!((~x + bias) >> 31);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
