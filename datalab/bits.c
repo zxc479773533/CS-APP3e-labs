@@ -161,8 +161,7 @@ int getByte(int x, int n) {
  *   Rating: 3
  */
 int logicalShift(int x, int n) {
-  int size = 31;
-  int mask = (~(~0 << n) << size) >> n;
+  int mask = (~(~0 << n) << 31) >> n;
   return (x >> n) & ~(mask << 1);
 }
 /*
@@ -218,7 +217,8 @@ int tmin(void) {
  *   Rating: 2
  */
 int fitsBits(int x, int n) {
-  return 2;
+  int left = 33 + ~n;
+  return !((x << left >> left) ^ x);
 }
 /* 
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
@@ -261,7 +261,9 @@ int isPositive(int x) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int xsgn = (x >> 31) & 0x01;
+  int ysgn = (y >> 31) & 0x01;
+  return (((ysgn ^ 1) & (xsgn ^ 0)) | !(((y + ~x + 1) >> 31) & 0x01)) & !((ysgn ^ 0) & (xsgn ^ 1));
 }
 /*
  * ilog2 - return floor(log base 2 of x), where x > 0
@@ -271,7 +273,25 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4
  */
 int ilog2(int x) {
-  return 2;
+  int mask1 = 0x55 + (0x55 << 8);
+  int mask2 = 0x33 + (0x33 << 8);
+  int mask3 = 0x0f + (0x0f << 8);
+  int mask4 = 0xff + (0xff << 16);
+  int mask5 = 0xff + (0xff << 8);
+  mask1 += mask1 << 16;
+  mask2 += mask2 << 16;
+  mask3 += mask3 << 16;
+  x |= x >>1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  x = (x & mask1) + ((x >> 1) & mask1);
+  x = (x & mask2) + ((x >> 2) & mask2);
+  x = (x & mask3) + ((x >> 4) & mask3);
+  x = (x & mask4) + ((x >> 8) & mask4);
+  x = (x & mask5) + ((x >> 16) & mask5);
+  return x + ~1 + 1;
 }
 /* 
  * float_neg - Return bit-level equivalent of expression -f for
@@ -285,7 +305,9 @@ int ilog2(int x) {
  *   Rating: 2
  */
 unsigned float_neg(unsigned uf) {
- return 2;
+  if (((uf >> 23) & 0xff) != 0xff || (uf & 0x7fffff) == 0)
+    uf += (1 << 31);
+  return uf;
 }
 /* 
  * float_i2f - Return bit-level equivalent of expression (float) x
@@ -297,6 +319,9 @@ unsigned float_neg(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
+  unsigned f;
+  unsigned sgn = (x >> 31) & 0x01;
+
   return 2;
 }
 /* 
@@ -311,5 +336,16 @@ unsigned float_i2f(int x) {
  *   Rating: 4
  */
 unsigned float_twice(unsigned uf) {
-  return 2;
+  unsigned uf_sgn = (uf >> 31) & 0x01;
+  unsigned uf_exp = (uf >> 23) & 0xff;
+  if (uf_exp == 0) {
+    uf <<= 1;
+    uf += (uf_sgn << 31);
+  }
+  else if (uf_exp != 0xff) {
+    uf_exp += 1;
+    uf &= 0x807fffff;
+    uf = uf + (uf_exp << 23);
+  }
+  return uf;
 }
