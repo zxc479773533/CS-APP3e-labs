@@ -319,10 +319,40 @@ unsigned float_neg(unsigned uf) {
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
-  unsigned f;
-  unsigned sgn = (x >> 31) & 0x01;
+  int count = 1;
+  int f_sgn = (x >> 31) & 0x01;
+  unsigned f = 0;
+  unsigned f_exp;
 
-  return 2;
+  if (f_sgn == 1)
+    x = ~x + 1;
+
+  if (x == 0x80000000)
+    return 0xcf000000;
+
+  if (x == 0)
+    return 0;
+
+  while((x & 0x80000000) != 0x80000000) {
+    count++;
+    x <<= 1;
+  }
+
+  x <<= 1;
+  f_exp = 159 - count;
+  f |= (x >> 9) & 0x7fffff;
+  f |= (f_exp << 23);
+  f |= (f_sgn << 31);
+
+  if ((x & 0x0100) == 0x0100) {
+    if (x & 0xff)
+      f += 1;
+    else {
+      if (f & 0x01)
+        f += 1;
+      }
+  }
+  return f;
 }
 /* 
  * float_twice - Return bit-level equivalent of expression 2*f for
