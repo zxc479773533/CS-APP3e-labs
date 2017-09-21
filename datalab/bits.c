@@ -291,7 +291,7 @@ int ilog2(int x) {
   x = (x & mask3) + ((x >> 4) & mask3);
   x = (x & mask4) + ((x >> 8) & mask4);
   x = (x & mask5) + ((x >> 16) & mask5);
-  return x + ~1 + 1;
+  return x + ~0;
 }
 /* 
  * float_neg - Return bit-level equivalent of expression -f for
