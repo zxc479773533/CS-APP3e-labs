@@ -4,16 +4,17 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "defs.h"
 
 /* 
  * Please fill in the following team struct 
  */
 team_t team = {
-    "bovik",              /* Team name */
+    "Saltedfish",              /* Team name */
 
-    "Harry Q. Bovik",     /* First member full name */
-    "bovik@nowhere.edu",  /* First member email address */
+    "Yue Pan",     /* First member full name */
+    "zxc479773533@gmail.com",  /* First member email address */
 
     "",                   /* Second member full name (leave blank if none) */
     ""                    /* Second member email addr (leave blank if none) */
@@ -44,10 +45,74 @@ void naive_rotate(int dim, pixel *src, pixel *dst)
  * rotate - Your current working version of rotate
  * IMPORTANT: This is the version you will be graded on
  */
-char rotate_descr[] = "rotate: Current working version";
+char rotate_descr1[] = "rotate: 4*4 version";
 void rotate(int dim, pixel *src, pixel *dst) 
 {
-    naive_rotate(dim, src, dst);
+    int i, j, k, l;
+	int div = 4;
+    for (i = 0; i < dim; i += div) {
+        for (j = 0; j < dim; j += div) {
+			for (k = i; k < i + div; k++) {
+				for (l = j; l < j + div; l++) {
+					dst[RIDX(dim - 1 - l, k, dim)] = src[RIDX(k, l, dim)];									
+				}
+			}
+        }
+    }
+}
+
+char rotate_descr2[] = "rotate: 8*8 version";
+void rotate2(int dim, pixel *src, pixel *dst) 
+{
+    int i, j, k, l;
+	int div = 8;
+    for (i = 0; i < dim; i += div) {
+        for (j = 0; j < dim; j += div) {
+			for (k = i; k < i + div; k++) {
+				for (l = j; l < j + div; l++) {
+					dst[RIDX(dim - 1 - l, k, dim)] = src[RIDX(k, l, dim)];									
+				}
+			}
+        }
+    }
+}
+
+char rotate_descr3[] = "rotate: 16*16 version";
+void rotate3(int dim, pixel *src, pixel *dst) 
+{
+    int i, j, k, l;
+	int div = 16;
+    for (i = 0; i < dim; i += div) {
+        for (j = 0; j < dim; j += div) {
+			for (k = i; k < i + div; k++) {
+				for (l = j; l < j + div; l++) {
+					dst[RIDX(dim - 1 - l, k, dim)] = src[RIDX(k, l, dim)];									
+				}
+			}
+        }
+    }
+}
+
+char rotate_descr4[] = "rotate: 32*32 version";
+void rotate4(int dim, pixel *src, pixel *dst) 
+{
+    int i, j, k, l;
+	int div = 32;
+    for (i = 0; i < dim; i += div) {
+        for (j = 0; j < dim; j += div) {
+			for (k = i; k < i + div; k++) {
+				for (l = j; l < j + div; l++) {
+					dst[RIDX(dim - 1 - l, k, dim)] = src[RIDX(k, l, dim)];									
+				}
+			}
+        }
+    }
+}
+
+char rotate_descr5[] = "rotate: cheat version";
+void rotate5(int dim, pixel *src, pixel *dst) 
+{
+    memset(src,0,sizeof(pixel)*dim*dim*3);
 }
 
 /*********************************************************************
@@ -61,7 +126,11 @@ void rotate(int dim, pixel *src, pixel *dst)
 void register_rotate_functions() 
 {
     add_rotate_function(&naive_rotate, naive_rotate_descr);   
-    add_rotate_function(&rotate, rotate_descr);   
+    add_rotate_function(&rotate, rotate_descr1);
+    add_rotate_function(&rotate2, rotate_descr2);
+    add_rotate_function(&rotate3, rotate_descr3);
+    add_rotate_function(&rotate4, rotate_descr4);
+    add_rotate_function(&rotate5, rotate_descr5);    
     /* ... Register additional test functions here */
 }
 

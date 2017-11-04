@@ -22,3 +22,4 @@ Here in my blog: [A Salted fish's blog](https://zxc479773533.github.io)
 * 2017.10.20 Finish report of Bomb Lab.
 * 2017.10.29 Finish `Attack Lab`.
 * 2017.10.31 Finish reading chapter 5: *Optimizing Program Performance*
+* 2017.11.2 Finish reading chapter 6: *The Memory Hierarchy*
