@@ -8,25 +8,37 @@
 // Author: Yue Pan
 // Replacement Policy: LRU
 
+enum {
+    TYPE_MODIFY,
+    TYPE_LOAD,
+    TYPE_SAVE
+};
+
+enum {
+    HIT,
+    MISS,
+    EVICTION
+};
+
 typedef struct {
-    int v;
-    int s;
-    int E;
-    int b;
+    int visible;
+    int set_num;
+    int entry;
 } cache_size;
 
 typedef struct {
-    u_int valid;
-    u_int tag;
-    u_int time;
+    unsigned int valid;
+    unsigned int tag;
+    unsigned int time;
 } cache_line;
 
 typedef struct {
     char op;
-    u_int addr;
-    u_int index;
-    u_int tag;
-    u_int mem_size;
+    unsigned int addr;
+    unsigned int index;
+    unsigned int tag;
+    unsigned int mem_size;
+    unsigned int time;
 } operation;
 
 typedef struct {
@@ -34,6 +46,99 @@ typedef struct {
     int misses;
     int evictions;
 } summary;
+
+void Caching(cache_line *cache, operation an_op, cache_size c_size, summary *my_summary) {
+
+    int index;
+    int type;
+    int result;
+    int min_time_index;    
+
+    // get type
+    switch (an_op.op) {
+        case 'M':
+            type = TYPE_MODIFY;
+            break;
+        case 'L':
+            type = TYPE_LOAD;
+            break;
+        case 'S':
+            type = TYPE_SAVE;
+            break;
+    }
+    cache_line *pcache = cache + an_op.index * c_size.entry;
+
+    // get result type
+    result = EVICTION;
+    for (index = 0; index < c_size.entry; index++) {
+        if ((pcache + index)->valid == 0)
+            result = MISS;
+        if ((pcache + index)->tag == an_op.tag) {
+            result = HIT;
+            break;
+        }
+    }
+
+    // LRU policy
+    switch (result) {
+        // if HIT, just refrash the time
+        case HIT:
+            my_summary->hits++;
+            (pcache + index)->time = an_op.time;
+            break;
+        // if MISS, add it to the cache
+        case MISS:
+            my_summary->misses++;
+            for (index = 0; index < c_size.entry; index++) {
+                if ((pcache + index)->valid == 0) {
+                    (pcache + index)->valid = 1;
+                    (pcache + index)->tag = an_op.tag;
+                    (pcache + index)->time = an_op.time;
+                    break;
+                }
+            }
+            break;
+        // if EVICTION, delete the line who have minimum time and add it to the cache
+        case EVICTION:
+            my_summary->evictions++;
+            min_time_index = pcache->time;
+            for (index = 1; index < c_size.entry; index++) {
+                if ((pcache + index)->time < min_time_index)
+                    min_time_index = pcache[index].time;
+            }
+            (pcache + min_time_index)->tag = an_op.tag;
+            (pcache + min_time_index)->time = an_op.time;
+            break;
+    }
+
+    // print type ( Only visible = 1 )
+    if (c_size.visible == 1) {
+        switch (type) {
+            case TYPE_MODIFY:
+                printf("M ");
+                break;
+            case TYPE_LOAD:
+                printf("L ");
+                break;
+            case TYPE_SAVE:
+                printf("S ");
+                break;
+        }
+        printf("%x,%d ", an_op.addr, an_op.mem_size);
+        switch (result) {
+            case HIT:
+                printf("hit\n");
+                break;
+            case MISS:
+                printf("miss\n");
+                break;
+            case EVICTION:
+                printf("miss eviction\n");
+                break;
+        }
+    }
+}
+
 
 void print_help_info(void) {
     // Print the help inforation of this program
@@ -55,40 +160,42 @@ int main(int argc, char **argv) {
 
     // get options
     char opt;
-    int h = 0, v = 0, s = 0, S = 0, E = 0, b = 0, t = 0;
+    int help = 0, visible = 0, set_power = 0, set_num = 0, entry = 0, block_power = 0, trace = 0;
     char *filepath;
     while((opt = getopt(argc, argv, "hvs:E:b:t:")) != -1) {
         switch (opt) {
             case 'h':
-                h = 1;
+                help = 1;
                 break;
             case 'v':
-                v = 1;
+                visible = 1;
                 break;
             case 's':
-                s = atoi(optarg);
-                S = 1 << s;
+                set_power = atoi(optarg);
+                set_num = 1 << set_power;
                 break;
             case 'E':
-                E = atoi(optarg);
+                entry = atoi(optarg);
                 break;
             case 'b':
-                b = atoi(optarg);
+                block_power = atoi(optarg);
                 break;
             case 't':
-                t = 1;
+                trace = 1;
                 filepath = optarg;
                 break;
             default:
-                h = 1;
+                help = 1;
                 break;
         }
     }
-    if (h == 1) {
+
+    // Print help info
+    if (help == 1) {
         print_help_info();
         exit(0);
     }
-    if (s == 0 || E == 0 || b == 0 || t == 0) {
+    if (set_power == 0 || entry == 0 || block_power == 0 || trace == 0) {
         printf("Arguments Error!\n\n");
         print_help_info();
         exit(1);
@@ -97,26 +204,40 @@ int main(int argc, char **argv) {
     // Build cache
     summary my_summary;
     cache_size c_size;
+    int index;
     my_summary.hits = my_summary.misses = my_summary.evictions == 0;
-    c_size.v = v, c_size.s = s, c_size.E = E, c_size.b = b;
-    cache_line **cache = (cache_line **)malloc(sizeof(cache_line) * S * E);
+    c_size.visible = visible, c_size.set_num = set_num, c_size.entry = entry;
+    cache_line *cache = (cache_line *)malloc(sizeof(cache_line) * set_num * entry);
     if (cache == NULL) {
         printf("Memory Error!\n");
         exit(1);
+    }
+    for (index = 0; index < set_num * entry; index++) {
+        (cache + index)->valid = 0;
+        (cache + index)->tag = 0xffffffff;
+        (cache + index)->time = 0;
     }
 
     // Read file
     FILE *trace_file = fopen(filepath, "r");
     operation an_op;
     int time = 0;
-    while (fscanf(trace_file, "%c %x,%u", &an_op.op, &an_op.addr, &an_op.mem_size) != EOF) {
+    char line[80];
+    char *pline = NULL;
+    while (fgets(line, 80, trace_file) != NULL) {
+        pline = line;
+        if (*pline++ != ' ')
+            continue;
+        sscanf(pline, "%c %x,%u", &an_op.op, &an_op.addr, &an_op.mem_size);
         time++;
-        an_op.index = (an_op.addr >> b) & ~(~0 << S);
-        an_op.tag = an_op.addr >> (b + s);
-        Caching();
+        an_op.index = (an_op.addr >> block_power) & ~(~0 << set_num);
+        an_op.tag = an_op.addr >> (block_power + set_power);
+        an_op.time = time;
+        Caching(cache, an_op, c_size, &my_summary);
     }
     free(cache);
 
+    // Print answer
     printSummary(my_summary.hits, my_summary.misses, my_summary.evictions);
     return 0;
 }
