@@ -27,18 +27,16 @@ typedef struct {
 } cache_size;
 
 typedef struct {
-    unsigned int valid;
-    unsigned int tag;
-    unsigned int time;
+    unsigned long int valid;
+    unsigned long int tag;
 } cache_line;
 
 typedef struct {
     char op;
-    unsigned int addr;
-    unsigned int index;
-    unsigned int tag;
+    unsigned long int addr;
+    unsigned long int index;
+    unsigned long int tag;
     unsigned int mem_size;
-    unsigned int time;
 } operation;
 
 typedef struct {
@@ -52,7 +50,7 @@ void Caching(cache_line *cache, operation an_op, cache_size c_size, summary *my_
     int index;
     int type;
     int result;
-    int min_time_index;    
+    unsigned long int temp_rag;
 
     // get type
     switch (an_op.op) {
@@ -71,8 +69,10 @@ void Caching(cache_line *cache, operation an_op, cache_size c_size, summary *my_
     // get result type
     result = EVICTION;
     for (index = 0; index < c_size.entry; index++) {
-        if ((pcache + index)->valid == 0)
+        if ((pcache + index)->valid == 0) {
             result = MISS;
+            break;
+        }
         if ((pcache + index)->tag == an_op.tag) {
             result = HIT;
             break;
@@ -83,34 +83,34 @@ void Caching(cache_line *cache, operation an_op, cache_size c_size, summary *my_
     switch (result) {
         // if HIT, just refrash the time
         case HIT:
+            temp_rag = (pcache + index)->tag;
+            for ( ; index < c_size.entry - 1 && (pcache + index + 1)->valid == 1; index++) {
+                (pcache + index)->tag = (pcache + index + 1)->tag;
+            }
+            (pcache + index)->tag = temp_rag;
             my_summary->hits++;
-            (pcache + index)->time = an_op.time;
             break;
         // if MISS, add it to the cache
         case MISS:
             my_summary->misses++;
-            for (index = 0; index < c_size.entry; index++) {
-                if ((pcache + index)->valid == 0) {
-                    (pcache + index)->valid = 1;
-                    (pcache + index)->tag = an_op.tag;
-                    (pcache + index)->time = an_op.time;
-                    break;
-                }
-            }
+            (pcache + index)->valid = 1;
+            (pcache + index)->tag = an_op.tag;
             break;
         // if EVICTION, delete the line who have minimum time and add it to the cache
         case EVICTION:
+            my_summary->misses++;
             my_summary->evictions++;
-            min_time_index = pcache->time;
-            for (index = 1; index < c_size.entry; index++) {
-                if ((pcache + index)->time < min_time_index)
-                    min_time_index = pcache[index].time;
+            for (index = 0; index < c_size.entry - 1; index++) {
+                (pcache + index)->tag = (pcache + index + 1)->tag;
             }
-            (pcache + min_time_index)->tag = an_op.tag;
-            (pcache + min_time_index)->time = an_op.time;
+            (pcache + index)->tag = an_op.tag;
             break;
     }
 
+    // the write in type modify is sure to hit
+    if (type == TYPE_MODIFY)
+        my_summary->hits++;
+        
     // print type ( Only visible = 1 )
     if (c_size.visible == 1) {
         switch (type) {
@@ -124,18 +124,21 @@ void Caching(cache_line *cache, operation an_op, cache_size c_size, summary *my_
                 printf("S ");
                 break;
         }
-        printf("%x,%d ", an_op.addr, an_op.mem_size);
+        printf("%lx,%d ", an_op.addr, an_op.mem_size);
         switch (result) {
             case HIT:
-                printf("hit\n");
+                printf("hit");
                 break;
             case MISS:
-                printf("miss\n");
+                printf("miss");
                 break;
             case EVICTION:
-                printf("miss eviction\n");
+                printf("miss eviction");
                 break;
         }
+        if (type == TYPE_MODIFY)
+            printf(" hit");
+        printf("\n");
     }
 }
 
@@ -152,8 +155,8 @@ void print_help_info(void) {
     printf("  -t <file>  Trace file.\n");
     printf("\n");
     printf("Examples:\n");
-    printf("  linux>  ./csim-ref -s 4 -E 1 -b 4 -t traces/yi.trace\n");
-    printf("  linux>  ./csim-ref -v -s 8 -E 2 -b 4 -t traces/yi.trace\n");
+    printf("  linux>  ./csim -s 4 -E 1 -b 4 -t traces/yi.trace\n");
+    printf("  linux>  ./csim -v -s 8 -E 2 -b 4 -t traces/yi.trace\n");
 }
 
 int main(int argc, char **argv) {
@@ -205,7 +208,7 @@ int main(int argc, char **argv) {
     summary my_summary;
     cache_size c_size;
     int index;
-    my_summary.hits = my_summary.misses = my_summary.evictions == 0;
+    my_summary.hits = my_summary.misses = my_summary.evictions = 0;
     c_size.visible = visible, c_size.set_num = set_num, c_size.entry = entry;
     cache_line *cache = (cache_line *)malloc(sizeof(cache_line) * set_num * entry);
     if (cache == NULL) {
@@ -215,24 +218,20 @@ int main(int argc, char **argv) {
     for (index = 0; index < set_num * entry; index++) {
         (cache + index)->valid = 0;
         (cache + index)->tag = 0xffffffff;
-        (cache + index)->time = 0;
     }
 
     // Read file
     FILE *trace_file = fopen(filepath, "r");
     operation an_op;
-    int time = 0;
     char line[80];
     char *pline = NULL;
     while (fgets(line, 80, trace_file) != NULL) {
         pline = line;
-        if (*pline++ != ' ')
+        if (*pline++ == 'I')
             continue;
-        sscanf(pline, "%c %x,%u", &an_op.op, &an_op.addr, &an_op.mem_size);
-        time++;
-        an_op.index = (an_op.addr >> block_power) & ~(~0 << set_num);
+        sscanf(pline, "%c %lx,%u", &an_op.op, &an_op.addr, &an_op.mem_size);
+        an_op.index = (an_op.addr >> block_power) & ~(~0 << set_power);
         an_op.tag = an_op.addr >> (block_power + set_power);
-        an_op.time = time;
         Caching(cache, an_op, c_size, &my_summary);
     }
     free(cache);
