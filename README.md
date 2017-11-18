@@ -27,3 +27,4 @@ Here in my blog: [A Salted fish's blog](https://zxc479773533.github.io)
 * 2017.11.2 Finish reading chapter 6: *The Memory Hierarchy*
 * 2017.11.4 Finish `Performance Lab`.
 * 2017.11.9 Finish reading chapter 7: *Linking*
+* 2017.11.18 Finish `Cache Lab`
