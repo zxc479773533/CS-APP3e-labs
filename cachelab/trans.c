@@ -93,7 +93,7 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N])
                     B[l][i + 1] = t2;
                     B[l][i + 2] = t3;
                     B[l][i + 3] = t4;
-                    
+
                     B[l][i + 4] = A[i + 4][l];
                     B[l][i + 5] = A[i + 5][l];
                     B[l][i + 6] = A[i + 6][l];
