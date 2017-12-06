@@ -31,3 +31,4 @@ Here in my blog: [A Salted fish's blog](https://zxc479773533.github.io)
 * 2017.11.18 Finish `Cache Lab`
 * 2017.11.19 Finish report of Performance Lab.
 * 2017.11.20 Finish report of Cache Lab.
+* 2017.12.6 Finish reading chapter 8: *Exceptional Control Flow*
