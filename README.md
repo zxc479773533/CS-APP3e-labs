@@ -34,4 +34,6 @@ Here in my blog: [A Salted fish's blog](https://zxc479773533.github.io)
 * 2017.12.6 Finish reading chapter 8: *Exceptional Control Flow*
 * 2017.12.8 Finish reading chapter 10: *System-level I/O*
 * 2017.12.9 Finish `Shell Lab`
-* 2017.12.9 Finish reading chapted 9: *Virtual memory*
+* 2017.12.9 Finish reading chapter 9: *Virtual memory*
+* 2017.12.12 Finish reading chapter 11: *Network programming*
+* 2017.12.13 Finish reading chapter 12: *Concurrent programming*
